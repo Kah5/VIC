@@ -9,8 +9,10 @@ library(sp)
 
 ##Pacific Oscillation index data for later use
 #this data is from http://www.cpc.ncep.noaa.gov/data/teledoc/pna.shtml
-PNA <- read.table("PNA.txt", header=TRUE, sep="\t")
-NAO <- read.table("NAO.txt", header=TRUE, sep="\t")
+PNA <- read.table("PNA.txt", header=TRUE, sep="\t") 
+##North Atlantic Oscillation index data for later use
+#data from http://www.cpc.ncep.noaa.gov/products/precip/CWlink/pna/nao.shtml
+NAO <- read.table("~/VicStuff/NAO.txt", header=TRUE, sep="\t")
 #########################################3
 #Loading Monthly data from chun-mei's VIC run
 ################################
@@ -153,6 +155,17 @@ evap.eof1 <- spplot(eof1, main ="EOF1 Evapotranspiration")
 evap.eof2 <- spplot(eof2, main = "EOF2 Evapotranspiration")
 evap.eof3 <- spplot(eof3, main = "EOF3 Evapotranspiration")
 
+z <-read.table("evapPCs.txt",sep='\t')
+#PNA index
+PNA.1950 <- PNO[1:768,]
+cor(z[1,], PNA.1950$INDEX)
+cor(z[2,], PNA.1950$INDEX)
+cor(z[3,], PNA.1950$INDEX)
+
+NAO<-NAO[1:768,]
+cor(z[1,],NAO$INDEX)
+cor(z[2,],NAO$INDEX)
+cor(z[3,],NAO$INDEX)
 
 #######################################################
 
@@ -216,6 +229,7 @@ eof2 <- data.frame(cbind(as.numeric(latlong[,1]),as.numeric(latlong[,2]),U[,2]))
 colnames(eof2) <- c("lat", "lon","eof2")
 eof3 <- data.frame(cbind(as.numeric(latlong[,1]), as.numeric(latlong[,2]), U[,3]))
 colnames(eof3) <- c("lat", "lon","eof3")
+
 write.table(U, "soilm1U.txt", sep="\t") # write a table with EOFS
 write.table(z, "soilm1Z.txt", sep="\t")
 ##make the data spatial points using coordinates() from the sp package
@@ -233,14 +247,18 @@ soilm1.eof3 <- spplot(eof3, main = "EOF3 Soil moisture layer1")
 #PC1 is z[,1]
 plot(z[1,],type='l') 
 PNO.1950<-PNO[1:768,] #takes only 1950-2013 data from PNO index
-
+Year<-NAO[1:768,]$V1
+Month<-NAO[1:768,]$V2
 #find correlation between PNO and Z[2,]
 cor(z[1,], PNO.1950$INDEX)
-cor(z[2,],PNO.1950$INDEX)
+cor(z[2,], PNO.1950$INDEX)
 cor(z[3,], PNO.1950$INDEX)
 
 #create linear model fits for this
 PC2.lm<-lm(z[2,]~PNO.1950$INDEX)
+
+
+
 ##################################################3
 #soil moisture layer 2
 ####################################################
@@ -367,12 +385,24 @@ uta <- t(U) %*% X
 ## calculate the orginal data based on the first 2 EOFS
 A <- U[,1:2] %*% z[1:2,] # this gives the first 2 rows in the first column as non-zero, but rounding, they are zero
 
+##double check this
+#Calculate proportion of variance explained and cumulative variance explained
+scores <- X %*% diag.s
+total.var<-sum(diag(diag.s))
+prop.var<-rep(NA,ncol(X))
+cum.var<-rep(NA,ncol(X))
+for(i in 1:ncol(X)){prop.var[i]<-(sum(diag.s[,i])/total.var)}
+for(i in 1:ncol(X)){cum.var[i]<-sum(prop.var[1:i])}
+
+
+
 #the Principle components here now represent time  series of length N
 plot(z[1,],type='l')  #time series explaining the most variation in the data
 plot(z[2,],type='l')  #time series for 2nd EOF
 
 write.table(U, "soilm3U.txt", sep="\t")
 write.table(z, "soilm3Z.txt", sep="\t")
+
 #create separate objects for eofs 1-3
 eof1 <- data.frame(cbind(as.numeric(latlong[,1]),as.numeric(latlong[,2]),U[,1]))
 colnames(eof1) <- c("lat", "lon","eof1")
@@ -392,7 +422,7 @@ soilm3.eof2 <- spplot(eof2, main = "EOF2 Soil moisture layer3")
 soilm3.eof3 <- spplot(eof3, main = "EOF3 Soil moisture layer3")
 
 
-
+plot(z[1,], )
 ###save the soil moisture EOF's to a pdf
 
 pdf("EOFmaps.pdf")
@@ -409,3 +439,31 @@ soilm3.eof1
 soilm3.eof2
 soilm3.eof3
 dev.off()
+
+
+
+###fourier transform analysis
+plot.frequency.spectrum <- function(X.k, xlimits=c(0,length(X.k))) {
+  plot.data  <- cbind(0:(length(X.k)-1), Mod(X.k))
+  
+  # TODO: why this scaling is necessary?
+  plot.data[2:length(X.k),2] <- 2*plot.data[2:length(X.k),2] 
+  
+  plot(plot.data, t="h", lwd=2, main="", 
+       xlab="Frequency", ylab="Strength", 
+       xlim=xlimits, ylim=c(0,max(Mod(plot.data[,2]))))
+}
+
+x.1<-fft(z[1,])
+plot.frequency.spectrum(x.1, xlimits=c(0,length(z[1,])/2))
+plot(z[1,] type="l")
+
+x.2<-fft(z[2,])
+plot.frequency.spectrum(x.2, xlimits=c(0,length(z[2,])/2))
+plot(z[2,] type="l")
+
+x.3<-fft(z[3,])
+plot.frequency.spectrum(x.3, xlimits=c(0,length(z[3,])/2))
+plot(z[3,], type="l")
+
+
