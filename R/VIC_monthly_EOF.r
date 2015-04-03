@@ -9,7 +9,8 @@ library(sp)
 
 ##Pacific Oscillation index data for later use
 #this data is from http://www.cpc.ncep.noaa.gov/data/teledoc/pna.shtml
-PNO <- read.table("PNA.txt", header=TRUE, sep="\t")
+PNA <- read.table("PNA.txt", header=TRUE, sep="\t")
+NAO <- read.table("NAO.txt", header=TRUE, sep="\t")
 #########################################3
 #Loading Monthly data from chun-mei's VIC run
 ################################
@@ -88,7 +89,72 @@ precip.eof3 <- spplot(eof3, main = "EOF3 Precipitation")
 
 
 ########################################################
-#EOF analysis for 
+#EOF analysis for evaporation
+###########################################################
+dataset<-do.call("cbind", lapply(file_list,FUN=function(files){read.table(files)$V4}))
+colnames(dataset)<-substr(file_list, 14, 30) #this takes the latlon from each file makes it the header for each row
+
+latlong<-cbind(substr(file_list,14,21),substr(file_list,23,30)) #create latlong vector from file names
+
+
+######################
+##EOF Analysis
+#####################
+#express the space-time data as a 2D matrix with "M" rows (space) by "N" columns(time)
+#transpose our data so that time is represented in the columns and space in rows
+
+A <- t(as.matrix(dataset))  #convert to matrix and transpose
+
+#A <- matrix(c(2,4,-6,8,1,2,-3,4,4,1,3,2), nrow=3, byrow=TRUE) #testing with dummy matrix
+##preprocess the data by subtracting the long-term mean (mean of each row) from each row
+##This creates an "anomoly" matrix
+ltmeans <- apply(A, 1, mean)   #calculate the longterm means for each row and puts it in a list
+X <- A - ltmeans   #subtract longterm means from the matrix A
+
+## Calculate the eigenvectors (E) and Eigen Values EV of the covariance matrix C
+esv <- svd(X) #svd analysis of a matrix returns a lise with d, u, and v objections
+diag.s <- diag(esv$d) #this is equivalent to S in matlab
+V <- esv$v #this should be columns of the EOF in time dimension
+U <-esv$u
+
+## calculate the z matrix
+z <- diag.s %*% t(V) # z is the matrix multiplcation of S and V'
+#rows of the z matrix should be the Principle components associated with each EOF
+
+## z can be confirmed another way:
+uta <- t(U) %*% X
+
+## calculate the orginal data based on the first 2 EOFS
+A <- U[,1:2] %*% z[1:2,] # this gives the first 2 rows in the first column as non-zero, but rounding, they are zero
+
+#the Principle components here now represent time  series of length N
+plot(z[1,], type='l')  #time series explaining the most variation in the data
+plot(z[2,], type='l')  #time series for 2nd EOF
+plot(z[3,], type='l')
+
+#create separate objects for eofs 1-3
+eof1 <- data.frame(cbind(as.numeric(latlong[,1]),as.numeric(latlong[,2]),U[,1]))
+colnames(eof1) <- c("lat", "lon","eof1")
+eof2 <- data.frame(cbind(as.numeric(latlong[,1]),as.numeric(latlong[,2]),U[,2]))
+colnames(eof2) <- c("lat", "lon","eof2")
+eof3 <- data.frame(cbind(as.numeric(latlong[,1]), as.numeric(latlong[,2]), U[,3]))
+colnames(eof3) <- c("lat", "lon","eof3")
+
+write.table(U,"evapU.txt",sep='\t')
+write.table(Z, "evapPCs.txt", sep='\t')
+
+##make the data spatial points using coordinates() from the sp package
+coordinates(eof1) <-~lon+lat
+coordinates(eof2) <-~lon+lat
+coordinates(eof3) <-~lon+lat
+
+#this visualizes the EOF's in space
+evap.eof1 <- spplot(eof1, main ="EOF1 Evapotranspiration")
+evap.eof2 <- spplot(eof2, main = "EOF2 Evapotranspiration")
+evap.eof3 <- spplot(eof3, main = "EOF3 Evapotranspiration")
+
+
+#######################################################
 
 dataset<-do.call("cbind", lapply(file_list,FUN=function(files){read.table(files)$V8}))
 colnames(dataset)<-substr(file_list, 14, 30) #this takes the latlon from each file makes it the header for each row
