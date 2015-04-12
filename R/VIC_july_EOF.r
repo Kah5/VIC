@@ -19,13 +19,20 @@ NAO <- read.table("~/VicStuff/NAO.txt", sep="", stringsAsFactors=FALSE)
 # list the files to process that are in the current directory with the pattern beginng with "FLUX_"
 filesToProcess <- dir(pattern = "Monthly_Flux_.*")
 
-file_list<-filesToProcess
+file_list<-head(filesToProcess)
+
 ##extract column of interest from all flux files into columns using cbind
 dataset<-do.call("cbind", lapply(file_list,FUN=function(files){read.table(files)$V3}))
 colnames(dataset)<-substr(file_list, 14, 30) #this takes the latlon from each file makes it the header for each row
+month <- data.frame(read.table(file_list[1])$V2)
+dataset <- cbind(month, dataset)
+colnames(dataset) <- c("month",substr(file_list, 14, 30) )
 
+monthlysplit<-split(dataset, month)
+  
 latlong<-cbind(substr(file_list,14,21),substr(file_list,23,30)) #create latlong vector from file names
 
+july <- monthlysplit[[6]] # the jult split that we want EOF analysis on 
 #use subset to only get julys
 
 ######################
@@ -34,7 +41,7 @@ latlong<-cbind(substr(file_list,14,21),substr(file_list,23,30)) #create latlong 
 #express the space-time data as a 2D matrix with "M" rows (space) by "N" columns(time)
 #transpose our data so that time is represented in the columns and space in rows
 
-A <- t(as.matrix(dataset))  #convert to matrix and transpose
+A <- t(july[,2:ncol(july)])  #convert to matrix and transpose
 
 #A <- matrix(c(2,4,-6,8,1,2,-3,4,4,1,3,2), nrow=3, byrow=TRUE) #testing with dummy matrix
 ##preprocess the data by subtracting the long-term mean (mean of each row) from each row
@@ -71,8 +78,8 @@ colnames(eof2) <- c("lat", "lon","eof2")
 eof3 <- data.frame(cbind(as.numeric(latlong[,1]), as.numeric(latlong[,2]), U[,3]))
 colnames(eof3) <- c("lat", "lon","eof3")
 
-write.table(U,"precipU.txt",sep='\t')
-write.table(Z, "precipPCs.txt", sep='\t')
+#write.table(U,"precipU.txt",sep='\t')
+#write.table(Z, "precipPCs.txt", sep='\t')
 
 ##make the data spatial points using coordinates() from the sp package
 coordinates(eof1) <-~lon+lat
@@ -98,7 +105,16 @@ dataset<-do.call("cbind", lapply(file_list,FUN=function(files){read.table(files)
 colnames(dataset)<-substr(file_list, 14, 30) #this takes the latlon from each file makes it the header for each row
 
 latlong<-cbind(substr(file_list,14,21),substr(file_list,23,30)) #create latlong vector from file names
+month <- data.frame(read.table(file_list[1])$V2)
+dataset <- cbind(month, dataset)
+colnames(dataset) <- c("month",substr(file_list, 14, 30) )
 
+monthlysplit<-split(dataset, month)
+
+latlong<-cbind(substr(file_list,14,21),substr(file_list,23,30)) #create latlong vector from file names
+
+july <- monthlysplit[[6]] # the jult split that we want EOF analysis on 
+#use subset to only get julys
 
 ######################
 ##EOF Analysis
@@ -106,7 +122,8 @@ latlong<-cbind(substr(file_list,14,21),substr(file_list,23,30)) #create latlong 
 #express the space-time data as a 2D matrix with "M" rows (space) by "N" columns(time)
 #transpose our data so that time is represented in the columns and space in rows
 
-A <- t(as.matrix(dataset))  #convert to matrix and transpose
+A <- t(as.matrix(july[,2:ncol(july)]))  #convert to matrix and transpose
+
 
 #A <- matrix(c(2,4,-6,8,1,2,-3,4,4,1,3,2), nrow=3, byrow=TRUE) #testing with dummy matrix
 ##preprocess the data by subtracting the long-term mean (mean of each row) from each row
@@ -174,21 +191,23 @@ dataset<-do.call("cbind", lapply(file_list,FUN=function(files){read.table(files)
 colnames(dataset)<-substr(file_list, 14, 30) #this takes the latlon from each file makes it the header for each row
 
 latlong<-cbind(substr(file_list,14,21),substr(file_list,23,30)) #create latlong vector from file names
+month <- data.frame(read.table(file_list[1])$V2)
+dataset <- cbind(month, dataset)
+colnames(dataset) <- c("month",substr(file_list, 14, 30) )
 
-##Now that data is formatted properly, can do analyses: EOF 
+monthlysplit<-split(dataset, month)
 
-#timeseriesplot for 1 gridcell
-#soil1.time<-ts(dataset[,1], freq = 12, start=c(1950,1))
-#plot.ts(soil1.time, main="Time Series of Soil Moisture layer 1")
+
+july <- monthlysplit[[6]] # the jult split that we want EOF analysis on 
+#use subset to only get julys
 
 ######################
 ##EOF Analysis
 #####################
 #express the space-time data as a 2D matrix with "M" rows (space) by "N" columns(time)
-
 #transpose our data so that time is represented in the columns and space in rows
 
-A <- t(as.matrix(dataset))  #convert to matrix and transpose
+A <- t(as.matrix(july[,2:ncol(july)]))  #convert to matrix and transpose
 
 #A <- matrix(c(2,4,-6,8,1,2,-3,4,4,1,3,2), nrow=3, byrow=TRUE) #testing with dummy matrix
 ##preprocess the data by subtracting the long-term mean (mean of each row) from each row
@@ -246,19 +265,19 @@ soilm1.eof3 <- spplot(eof3, main = "EOF3 Soil moisture layer1")
 ##Hypothesis: some soil moisture dipole effects will be correlated to zonal index (likely EOF2, with a dipole like effect)
 #to test this, I will use the PC1, PC2, and PC3 associated with the EOF1, EOF2, and EOF3
 #PC1 is z[,1]
-plot(z[1,],type='l') 
-PNO.1950<-PNO[1:768,] #takes only 1950-2013 data from PNO index
-Year<-NAO[1:768,]$V1
-Month<-NAO[1:768,]$V2
+#plot(z[1,],type='l') 
+#PNO.1950<-PNO[1:768,] #takes only 1950-2013 data from PNO index
+#Year<-NAO[1:768,]$V1
+#Month<-NAO[1:768,]$V2
 
-z <-read.table("soilm1z.txt",sep='\t')
+#z <-read.table("soilm1z.txt",sep='\t')
 #find correlation between PNO and Z[2,]
-cor(z[1,], PNO.1950$INDEX)
-cor(z[2,], PNO.1950$INDEX)
-cor(z[3,], PNO.1950$INDEX)
+#cor(z[1,], PNO.1950$INDEX)
+#cor(z[2,], PNO.1950$INDEX)
+#cor(z[3,], PNO.1950$INDEX)
 
 #create linear model fits for this
-PC2.lm<-lm(z[2,]~PNO.1950$INDEX)
+#PC2.lm<-lm(z[2,]~PNO.1950$INDEX)
 
 
 
@@ -267,23 +286,24 @@ PC2.lm<-lm(z[2,]~PNO.1950$INDEX)
 ####################################################
 dataset<-do.call("cbind", lapply(file_list,FUN=function(files){read.table(files)$V9}))
 colnames(dataset)<-substr(file_list, 14, 30) #this takes the latlon from each file makes it the header for each row
+month <- data.frame(read.table(file_list[1])$V2)
+dataset <- cbind(month, dataset)
+colnames(dataset) <- c("month",substr(file_list, 14, 30) )
+
+monthlysplit<-split(dataset, month)
 
 latlong<-cbind(substr(file_list,14,21),substr(file_list,23,30)) #create latlong vector from file names
 
-##Now that data is formatted properly, can do analyses: EOF 
-
-#timeseriesplot for 1 gridcell
-#soil1.time<-ts(dataset[,1], freq = 12, start=c(1950,1))
-#plot.ts(soil1.time, main="Time Series of Soil Moisture layer 1")
+july <- monthlysplit[[6]] # the jult split that we want EOF analysis on 
+#use subset to only get julys
 
 ######################
 ##EOF Analysis
 #####################
 #express the space-time data as a 2D matrix with "M" rows (space) by "N" columns(time)
-
 #transpose our data so that time is represented in the columns and space in rows
 
-A <- t(as.matrix(dataset))  #convert to matrix and transpose
+A <- t(as.matrix(july[,2:ncol(july)]))  #convert to matrix and transpose
 
 #A <- matrix(c(2,4,-6,8,1,2,-3,4,4,1,3,2), nrow=3, byrow=TRUE) #testing with dummy matrix
 ##preprocess the data by subtracting the long-term mean (mean of each row) from each row
@@ -343,23 +363,25 @@ soilm2.eof3 <- spplot(eof3, main = "EOF3 Soil moisture layer2")
 ####################################
 dataset<-do.call("cbind", lapply(file_list,FUN=function(files){read.table(files)$V10}))
 colnames(dataset)<-substr(file_list, 14, 30) #this takes the latlon from each file makes it the header for each row
+month <- data.frame(read.table(file_list[1])$V2)
+dataset <- cbind(month, dataset)
+colnames(dataset) <- c("month",substr(file_list, 14, 30) )
+
+monthlysplit<-split(dataset, month)
 
 latlong<-cbind(substr(file_list,14,21),substr(file_list,23,30)) #create latlong vector from file names
 
-##Now that data is formatted properly, can do analyses: EOF 
-
-#timeseriesplot for 1 gridcell
-#soil1.time<-ts(dataset[,1], freq = 12, start=c(1950,1))
-#plot.ts(soil1.time, main="Time Series of Soil Moisture layer 1")
+july <- monthlysplit[[6]] # the jult split that we want EOF analysis on 
+#use subset to only get julys
 
 ######################
 ##EOF Analysis
 #####################
 #express the space-time data as a 2D matrix with "M" rows (space) by "N" columns(time)
-
 #transpose our data so that time is represented in the columns and space in rows
 
-A <- t(as.matrix(dataset))  #convert to matrix and transpose
+A <- t(as.matrix(july[,2:ncol(july)]))  #convert to matrix and transpose
+
 
 #A <- matrix(c(2,4,-6,8,1,2,-3,4,4,1,3,2), nrow=3, byrow=TRUE) #testing with dummy matrix
 ##preprocess the data by subtracting the long-term mean (mean of each row) from each row
@@ -390,12 +412,12 @@ A <- U[,1:2] %*% z[1:2,] # this gives the first 2 rows in the first column as no
 
 ##double check this
 #Calculate proportion of variance explained and cumulative variance explained
-scores <- X %*% diag.s
-total.var<-sum(diag(diag.s))
-prop.var<-rep(NA,ncol(X))
-cum.var<-rep(NA,ncol(X))
-for(i in 1:ncol(X)){prop.var[i]<-(sum(diag.s[,i])/total.var)}
-for(i in 1:ncol(X)){cum.var[i]<-sum(prop.var[1:i])}
+#scores <- X %*% diag.s
+#total.var<-sum(diag(diag.s))
+#prop.var<-rep(NA,ncol(X))
+#cum.var<-rep(NA,ncol(X))
+#for(i in 1:ncol(X)){prop.var[i]<-(sum(diag.s[,i])/total.var)}
+#for(i in 1:ncol(X)){cum.var[i]<-sum(prop.var[1:i])}
 
 
 
@@ -427,8 +449,8 @@ soilm3.eof3 <- spplot(eof3, main = "EOF3 Soil moisture layer3")
 
 plot(z[1,], )
 ###save the soil moisture EOF's to a pdf
-
-pdf("EOFmaps.pdf")
+postscript("EOFmaps.ps")
+#pdf("EOFmaps.pdf")
 precip.eof1
 precip.eof2
 precip.eof3
